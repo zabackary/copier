@@ -1,0 +1,15 @@
+# Entries starting with `/` directories containing the file.
+# `#` means comment.
+# Blank lines are ignored.
+
+# Python environments contain a full copy of Python.
+/pyvenv.cfg
+
+# Cache directories are marked using this standard file, e.g. Rust's `target`
+/CACHEDIR.TAG
+
+# These are just binary pyc files.
+__pycache__
+
+# `node_modules` black hole
+node_modules
