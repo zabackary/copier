@@ -17,7 +17,7 @@ fn main() {
             println!("Using ignore file {}", ignore_path.to_str().unwrap())
         }
         match copier::run(config) {
-            Ok(_) => println!("Copied"),
+            Ok(_) => println!("Finished"),
             Err(err) => eprintln!("err: Failed to copy: {:?}", err),
         };
     }
