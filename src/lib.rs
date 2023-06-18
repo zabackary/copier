@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     error::Error,
     fmt::Write,
     fs::{self, File},
@@ -12,12 +13,12 @@ fn copy_dir_all<T, U>(
     src: impl AsRef<Path>,
     dst: impl AsRef<Path>,
     ignore_checker: &mut T,
-    bytes_callback: &mut U,
+    file_callback: &mut U,
     should_copy: bool,
 ) -> io::Result<()>
 where
     T: FnMut(&Path) -> io::Result<bool>,
-    U: FnMut(u64) -> (),
+    U: FnMut(&str, u64) -> (),
 {
     if should_copy {
         fs::create_dir_all(&dst)?;
@@ -32,11 +33,14 @@ where
                 entry.path(),
                 dst.as_ref().join(entry.file_name()),
                 ignore_checker,
-                bytes_callback,
+                file_callback,
                 should_copy,
             )?;
         } else {
-            bytes_callback(entry.metadata()?.len());
+            file_callback(
+                entry.path().to_str().expect("Not good unicode filename"),
+                entry.metadata()?.len(),
+            );
             if should_copy {
                 if let Err(err) = fs::copy(entry.path(), dst.as_ref().join(entry.file_name())) {
                     eprintln!(
@@ -113,7 +117,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     } else {
         vec![]
     };
-    println!("Ignoring {} directories", ignores.len());
+    println!("Ignoring directories matching {} patterns", ignores.len());
     println!("Discovering files...");
     let mut total_size = 0u64;
     let mut total_files = 0u64;
@@ -126,24 +130,25 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
                 path,
             )?)
         },
-        &mut |size| {
+        &mut |_, size| {
             total_size += size;
             total_files += 1;
         },
         false,
     )?;
     println!(
-        "Discovered {} files with a total size of {} bytes",
-        total_files, total_size
+        "Discovered {} files with a total size of {}",
+        indicatif::HumanCount(total_files).to_string(),
+        indicatif::HumanBytes(total_size).to_string()
     );
     let mut finished_size = 0u64;
     let progress_bar = ProgressBar::new(total_size);
     progress_bar.set_style(
       ProgressStyle::with_template(
-        "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})"
+        "{spinner:.green} {elapsed_precise}] [{bar:40.cyan/blue} {bytes}/{total_bytes} ({eta}) {msg}"
       ).unwrap()
       .with_key("eta", |state: &ProgressState, w: &mut dyn Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
-      .progress_chars("█>-")
+      .progress_chars("█)-")
     );
     copy_dir_all(
         config.source,
@@ -154,15 +159,15 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
                     progress_bar.suspend(|| {
                         println!("Ignoring {}", path.to_str().expect("Failed to print msg"));
                     });
-
                     true
                 } else {
                     false
                 },
             )
         },
-        &mut |size| {
+        &mut |file_name, size| {
             finished_size += size;
+            progress_bar.set_message(Cow::Owned(file_name.into()));
             progress_bar.set_position(finished_size);
         },
         true,
