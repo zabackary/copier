@@ -147,7 +147,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
       ProgressStyle::with_template(
         "{spinner:.green} {elapsed_precise}] [{bar:40.cyan/blue} {bytes}/{total_bytes} ({eta}) {msg}"
       ).unwrap()
-      .with_key("eta", |state: &ProgressState, w: &mut dyn Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
+      .with_key("eta", |state: &ProgressState, w: &mut dyn Write| write!(w, "{}", indicatif::HumanDuration(state.eta()).to_string()).unwrap())
       .progress_chars("█)-")
     );
     copy_dir_all(

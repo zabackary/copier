@@ -13,3 +13,6 @@ __pycache__
 
 # `node_modules` black hole
 node_modules
+
+# Custom ignored directories
+/copier-backup-ignore.tag
